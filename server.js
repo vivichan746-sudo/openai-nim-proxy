@@ -1,5 +1,6 @@
 // server.js - OpenAI-compatible proxy -> NVIDIA NIM (Render-ready)
 const express = require('express');
+const fetch = require('node-fetch'); // ensure node-fetch is installed
 const app = express();
 app.use(express.json({ limit: '10mb' }));
 
@@ -17,10 +18,14 @@ function requireProxyKey(req, res, next) {
   return res.status(401).json({ error: 'Unauthorized (invalid proxy key)' });
 }
 
+// Root check
 app.get('/', (req, res) => res.json({ ok: true, service: 'nim-openai-proxy' }));
 
+// ========================
+// POST routes (chat, text, embeddings)
+// ========================
 app.post(
-  ['/v1/chat/completions', '/v1/completions', '/v1/models', '/v1/embeddings'],
+  ['/v1/chat/completions', '/v1/completions', '/v1/embeddings'],
   requireProxyKey,
   async (req, res) => {
     try {
@@ -50,4 +55,35 @@ app.post(
   }
 );
 
+// ========================
+// GET /v1/models
+// ========================
+app.get('/v1/models', requireProxyKey, async (req, res) => {
+  try {
+    const upstream = `${NIM_BASE}/v1/models`;
+    const upstreamResp = await fetch(upstream, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${NIM_API_KEY}`,
+      },
+    });
+
+    const text = await upstreamResp.text();
+    const contentType = upstreamResp.headers.get('content-type') || 'application/json';
+    res.status(upstreamResp.status).set('content-type', contentType);
+
+    try {
+      return res.json(JSON.parse(text));
+    } catch (e) {
+      return res.send(text);
+    }
+  } catch (err) {
+    console.error('Proxy error:', err);
+    return res.status(500).json({ error: 'proxy_error', message: err.message });
+  }
+});
+
+// ========================
+// Start server
+// ========================
 app.listen(PORT, '0.0.0.0', () => console.log(`nim-openai-proxy listening on 0.0.0.0:${PORT}`));
