@@ -1,14 +1,16 @@
 {
   "name": "nim-openai-proxy",
   "version": "1.0.0",
+  "description": "OpenAI-compatible proxy to NVIDIA NIM (Render-ready)",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
-  "engines": {
-    "node": "18.x"
-  },
   "dependencies": {
-    "express": "^4.18.2"
+    "express": "^4.18.2",
+    "node-fetch": "^3.3.2"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
